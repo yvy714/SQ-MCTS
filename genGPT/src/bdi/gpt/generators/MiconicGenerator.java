@@ -1,6 +1,9 @@
-package uno.gpt.generators;
+package bdi.gpt.generators;
 
-import uno.gpt.structure.*;
+import bdi.gpt.structure.ActionNode;
+import bdi.gpt.structure.GoalNode;
+import bdi.gpt.structure.Literal;
+import bdi.gpt.structure.PlanNode;
 
 import java.util.HashMap;
 import java.util.Random;

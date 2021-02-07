@@ -1,10 +1,7 @@
 /*
- * Copyright 2016 Yuan Yao
- * University of Nottingham
- * Email: yvy@cs.nott.ac.uk (yuanyao1990yy@icloud.com)
- *
- * Modified 2019 IPC Committee
- * Contact: https://www.intentionprogression.org/contact/
+ * Copyright 2020 Yuan Yao
+ * Zhejiang University of Technology
+ * Email: yaoyuan@zjut.edu.cn (yuanyao1990yy@icloud.com)
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,29 +11,31 @@
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details 
+ *  GNU General Public License for more details
  *  <http://www.gnu.org/licenses/gpl-3.0.html>.
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package uno.gpt.generators;
+package bdi.gpt.generators;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import bdi.gpt.structure.ActionNode;
+import bdi.gpt.structure.GoalNode;
+import bdi.gpt.structure.Literal;
+import bdi.gpt.structure.PlanNode;
 import org.jdom2.Attribute;
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
 
-import uno.gpt.structure.*;
-
 /**
- * @version 2.0
+ * @version 2.1
  */
 class XMLWriter
 {	
@@ -90,7 +89,7 @@ class XMLWriter
 		var.setAttribute("stochastic", Boolean.toString(envVar.isStochastic()));
 		String initVal = envVar.isRandomInit() ? "random" : Boolean.toString(envVar.getState());
 		var.setAttribute("initVal", initVal);
-		var.setAttribute("prob", Double.toString(envVar.getProbability()));
+		//var.setAttribute("prob", Double.toString(envVar.getProbability()));
 		parent.addContent(var);
 	}
 	
@@ -119,22 +118,6 @@ class XMLWriter
 			pre.append(";");
 			plan.setAttribute(new Attribute("precondition", pre.toString()));
 		}
-		
-		// in-condition
-		st = pl.getInc();
-				
-		if(st != null && st.size() > 0){
-			StringBuilder inc = new StringBuilder();
-			for(int i = 0 ; i < st.size(); i++)
-			{
-				if (i > 0){
-					inc.append(", ");
-				}
-				inc.append(st.get(i).toSimpleString());
-			}
-			inc.append(";");
-			plan.setAttribute(new Attribute("in-condition", inc.toString()));
-		}
 
 		// post-condition
 		st = pl.getPost();
@@ -151,7 +134,6 @@ class XMLWriter
 			post.append(";");
 			plan.setAttribute(new Attribute("postcondition", post.toString()));
 		}
-
 
 
 		
@@ -196,21 +178,6 @@ class XMLWriter
 			action.setAttribute(new Attribute("precondition", pre.toString()));
 		}
 		
-		// in-condition
-		st = act.getInC();
-		if(st != null && st.size() > 0){
-			StringBuilder inc = new StringBuilder();
-			for(int i = 0 ; i < st.size(); i++)
-			{
-				if (i > 0){
-					inc.append(", ");
-				}
-				inc.append(st.get(i).toSimpleString());
-			}
-			inc.append(";");
-			action.setAttribute(new Attribute("in-condition", inc.toString()));
-		} 			
-		
 		// postcondition
 		st = act.getPostC();
 		if(st != null && st.size() > 0){
@@ -236,25 +203,10 @@ class XMLWriter
 	private void writeGoal(GoalNode gl, Element parent)
 	{
 		Element goal = new Element("Goal");
-		goal.setAttribute(new Attribute("name", gl.getName()));	
-		
-		// in-condition
-		ArrayList<Literal> st = gl.getInC();
-		if(st != null && st.size() > 0){
-			StringBuilder inc = new StringBuilder();
-			for(int i = 0 ; i < st.size(); i++)
-			{
-				if (i > 0){
-					inc.append(", ");
-				}
-				inc.append(st.get(i).toSimpleString());
-			}
-			inc.append(";");
-			goal.setAttribute(new Attribute("in-condition", inc.toString()));
-		}
+		goal.setAttribute(new Attribute("name", gl.getName()));
 
 		// goal-condition
-		st = gl.getGoalConds();
+		ArrayList<Literal> st = gl.getGoalConds();
 		if(st != null && st.size() > 0){
 			StringBuilder goalCond = new StringBuilder();
 			for(int i = 0 ; i < st.size(); i++)

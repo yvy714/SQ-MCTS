@@ -1,10 +1,7 @@
 /*
- * Copyright 2016 Yuan Yao
- * University of Nottingham
- * Email: yvy@cs.nott.ac.uk (yuanyao1990yy@icloud.com)
- *
- * Modified 2019 IPC Committee
- * Contact: https://www.intentionprogression.org/contact/
+ * Copyright 2020 Yuan Yao
+ * Zhejiang University of Technology
+ * Email: yaoyuan@zjut.edu.cn (yuanyao1990yy@icloud.com)
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,21 +11,22 @@
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details 
+ *  GNU General Public License for more details
  *  <http://www.gnu.org/licenses/gpl-3.0.html>.
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package uno.gpt.generators;
+package bdi.gpt.generators;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import uno.gpt.structure.*;
+import bdi.gpt.structure.GoalNode;
+import bdi.gpt.structure.Literal;
 
 /**
- * @version 2.0
+ * @version 2.1
  */
 class Main
 {
@@ -40,19 +38,19 @@ class Main
 
 		// Shared parameters with their default values
 		int seed = AbstractGenerator.def_seed, num_tree = AbstractGenerator.def_num_tree;
-
-		String path ="2ngpt1.xml";
+		// default path
+		String path ="gpt.xml";
 
 		 //Synth parameters with their default values
-		int sy_depth = SynthGenerator.def_depth,
-				sy_num_goal = SynthGenerator.def_num_goal,
-				sy_num_plan = SynthGenerator.def_num_plan,
-				sy_num_action = SynthGenerator.def_num_action,
-				sy_num_var = SynthGenerator.def_num_var,
-				sy_num_lit = SynthGenerator.def_num_literal,
-    				sy_num_selected = SynthGenerator.def_num_selected;
+		int sy_depth = SynthGenerator.def_depth,	// the maximum depth
+				sy_num_goal = SynthGenerator.def_num_goal, // the number of subgoals per plan
+				sy_num_plan = SynthGenerator.def_num_plan, // the number of plans for each goal
+				sy_num_action = SynthGenerator.def_num_action, // the number of actions in each plan
+				sy_num_var = SynthGenerator.def_num_var, // the total number of environmental variables
+				sy_num_lit = SynthGenerator.def_num_literal, // the number of literals appear in actions' pre- and post-condition
+    				sy_num_selected = SynthGenerator.def_num_selected; // the number of variables selected for each gpt
 
-		double sy_prob_peffect = SynthGenerator.def_prob;
+		double sy_prob_lplan = SynthGenerator.def_lplan; // the probability of a plan being leave plan
 
 		// Miconic parameters with their default values
 		int mi_num_floor = MiconicGenerator.def_floors, mi_num_pass = num_tree;
@@ -87,30 +85,32 @@ class Main
 					String help = "\n" +
 						"HELP:\n" +
 						"-s\n Random seed. If the value is not specified, 100 is default \n" +
-						"-d\n Depth of the goal-plan tree. If the value is not specified, 3 is default.\n" +
+						"-d\n Maximum depth of the goal-plan tree. If the value is not specified, 3 is default.\n" +
 						"-g\n Number of subgoals in each plan (except the leaf plan). If the value is not specified, 1 is default.\n" +
 						"-p\n Number of plans to achieve each goal. If the value is not specified, 2 is default.\n" +
 						"-a\n Number of actions in each plan. If the value is not specified, 1 is default.\n" +
 						"-v\n Number of environment variables. If the value is not specified, 60 is default.\n" +
-						"-y\n Probability of an effect selected as precondition. If the value is not specified, 0.5 is default.\n" +
 						"-t\n Number of goal-plan trees. If the value is not specified, 1 is default.\n" +
 						"-e\n Number of selected literals. If the value is not specified, 30 is default.\n" +
-						"-l\n Number of literals per action, 1 is default.\n" +
+						"-l\n Number of literals per action. If the value is not specified, 1 is default.\n" +
+							"-x\n Probability of a plan being leave plan. If the value is not specified, 0 is default\n" +
 						"-f\n The output file path to which the set of goal-plan tree is saved. If the value is not specified, gpt.xml is default.\n";
 
 					// parser for the input parameters
 					int i = 1;
 					String arg;
+					// check each flag
 					while(i < args.length && args[i].startsWith("-"))
 					{
 						arg = args[i++];
+						// parser to find out the flags
 						if(arg.length() != 2)
 						{
 							System.out.println(arg + " is not a valid flag");
 							System.out.println(help);
-
 							System.exit(1);
 						}
+						// get the flag value
 						char flag = arg.charAt(1);
 						switch (flag)
 						{
@@ -190,19 +190,6 @@ class Main
 									System.out.println("The number literals per action must be an integer");
 									System.exit(1);
 								}
-							case 'y': // safety factor
-								try
-								{
-									sy_prob_peffect = Double.parseDouble(args[i++]);
-									if (sy_prob_peffect < 0 || sy_prob_peffect > 1){
-										throw (new IllegalArgumentException());
-									}
-									break;
-								}catch(Exception e)
-								{
-									System.out.println("The number of goal-plan tree must be an integer");
-									System.exit(1);
-								}
 							case 't': // number of trees
 								try
 								{
@@ -212,14 +199,26 @@ class Main
 									System.out.println("The number of goal-plan tree must be an integer");
 									System.exit(1);
 								}
+							case 'x': // probability of a plan being leave plan
+								try{
+									sy_prob_lplan = Double.parseDouble(args[i++]);
+									if (sy_prob_lplan < 0 || sy_prob_lplan > 1){
+										throw (new IllegalArgumentException());
+									}
+									break;
+								}catch (Exception e){
+
+								}
 							case 'f': // path
 								path = args[i++];break;
+
 							default:
 								System.out.println(arg + " is not a valid flag");
 								System.out.println(help);
 								System.exit(1);
 						}
 					}
+
 
 					// check the value of the input arguments
 					if(sy_depth <= 0)
@@ -262,14 +261,13 @@ class Main
 						System.out.println("The number of literals per action must be greather than 0");
 						System.exit(1);
 					}
-
 					if(num_tree <= 0)
 					{
 						System.out.println("Total number of goal-plan tree must be greater than 0");
 						System.exit(1);
 					}
-					if(sy_prob_peffect < 0 || sy_prob_peffect > 1){
-						System.out.println("probability must be between 0 and 1");
+					if(sy_prob_lplan < 0 || sy_prob_lplan > 1){
+						System.out.println("probability of a plan being leave plan must be between 0 and 1");
 						System.exit(1);
 					}
 
@@ -282,9 +280,11 @@ class Main
 					System.out.println("var: " + sy_num_var);
 					System.out.println("selected: " + sy_num_selected);
 					System.out.println("literals: " + sy_num_lit);
-					System.out.println("peffect: " + sy_prob_peffect);
+					System.out.println("lplan: " + sy_prob_lplan);
 
-					gen = new SynthGenerator(seed, sy_depth, num_tree, sy_num_goal, sy_num_plan, sy_num_action, sy_num_var, sy_num_selected, sy_num_lit,sy_prob_peffect);
+					gen = new SynthGenerator(seed, sy_depth, num_tree, sy_num_goal, sy_num_plan, sy_num_action,
+							sy_num_var, sy_num_selected, sy_num_lit, sy_prob_lplan);
+
 					break;
 				}
 			case "miconic": // Miconic-N Generator
@@ -583,18 +583,21 @@ class Main
 				return;
 		}
 
+		// generate the environment
 		HashMap<String, Literal> environment = gen.genEnvironment();
 		// generate the tree
 		ArrayList<GoalNode> goalForests = new ArrayList<>();
 
 		System.out.println(num_tree);
-		for(int k = 0; k < num_tree; k++)
+		for (int k = 0; k < num_tree; k++)
 		{
 			goalForests.add(gen.genTopLevelGoal(k));
 		}
+
 		// write the set of goal plan tree to an XML file
 		XMLWriter wxf = new XMLWriter();
 		wxf.CreateXML(environment, goalForests, path);
 	}
+
 	
 }
